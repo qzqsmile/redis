@@ -42,6 +42,7 @@ extern const char *SDS_NOINIT;
 
 typedef char *sds;
 
+// len is the used memory length, but alloc is allocated memory, alloc >= len
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
 struct __attribute__ ((__packed__)) sdshdr5 {

@@ -1415,6 +1415,8 @@ dictType replScriptCacheDictType = {
     NULL                        /* val destructor */
 };
 
+//缩容不考虑COW是因为相对于扩容，缩容后的所占用的页面更小。导致COW的情况
+//与维持现状相比更好。
 int htNeedsResize(dict *dict) {
     long long size, used;
 
