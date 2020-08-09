@@ -43,6 +43,34 @@ extern const char *SDS_NOINIT;
 typedef char *sds;
 
 // len is the used memory length, but alloc is allocated memory, alloc >= len
+/*
+ struct __attribute__ (__packed__)这种写法实为 redis优化内存的一种技巧。如果不加该参数
+ struct为了寻址的方便，会默认采取二进制对其的方式进行处理。举个列子，如下代码：
+ #include <stdio.h>
+
+int main(void){
+    struct {
+        char c;
+        int i;
+    }unpacked;
+
+    struct {
+        char c;
+        int i;
+    }__attribute__((__packed__)) packed;
+
+    printf("unpacked is %lu, packed is %lu\n", sizeof(unpacked), sizeof(packed));
+
+    return 0;
+}
+在我的环境当中(Mac)输出为: unpacked is 8, packed is 5
+*/
+
+/*
+    此处设置sdshr5以为 sdshr8等一系列的struct的目的主要是省内存，因为不同字符串的大小不同，
+    如果使用不同的type进行初始化的话，可以节省其内存。这里有点拿时间换空间的意思，因为设置不同的
+    struct类型那么进行相应的操作的同时，一定会消耗一些计算资源。当然消耗的时间会很少。
+*/
 /* Note: sdshdr5 is never used, we just access the flags byte directly.
  * However is here to document the layout of type 5 SDS strings. */
 struct __attribute__ ((__packed__)) sdshdr5 {
@@ -81,10 +109,13 @@ struct __attribute__ ((__packed__)) sdshdr64 {
 #define SDS_TYPE_64 4
 #define SDS_TYPE_MASK 7
 #define SDS_TYPE_BITS 3
+// ##在宏定义中是连接符，举个例子：SDS_HDR_VAR(16,s); 展开为 sdshdr16 *sh = (void*)((s)-(sizeof(struct sdshdr16)));
+// 如果没有这个连接符符号的话，常用的写法应该是 #define SDS_HDR_VAR(16, sdshdr16)这样
 #define SDS_HDR_VAR(T,s) struct sdshdr##T *sh = (void*)((s)-(sizeof(struct sdshdr##T)));
 #define SDS_HDR(T,s) ((struct sdshdr##T *)((s)-(sizeof(struct sdshdr##T))))
 #define SDS_TYPE_5_LEN(f) ((f)>>SDS_TYPE_BITS)
 
+// static inline直接将代码放到调用者处，不产生函数本身的代码
 static inline size_t sdslen(const sds s) {
     unsigned char flags = s[-1];
     switch(flags&SDS_TYPE_MASK) {
