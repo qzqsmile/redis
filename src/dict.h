@@ -44,6 +44,7 @@
 /* Unused arguments generate annoying warnings... */
 #define DICT_NOTUSED(V) ((void) V)
 
+//items in hashtable
 typedef struct dictEntry {
     void *key;
     union {
@@ -73,6 +74,7 @@ typedef struct dictht {
     unsigned long used;
 } dictht;
 
+//really hashtable, dictht只是其中一个hashtable
 typedef struct dict {
     dictType *type;
     void *privdata;
@@ -105,6 +107,8 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
     if ((d)->type->valDestructor) \
         (d)->type->valDestructor((d)->privdata, (entry)->v.val)
 
+//这里需要注意hashtable很多地方都利用了这种回调函数的方式进行处理
+//与Python的源码比较类似，应该是为了增加灵活度，比如可以 value可以是一个对象
 #define dictSetVal(d, entry, _val_) do { \
     if ((d)->type->valDup) \
         (entry)->v.val = (d)->type->valDup((d)->privdata, _val_); \
@@ -124,6 +128,7 @@ typedef void (dictScanBucketFunction)(void *privdata, dictEntry **bucketref);
 #define dictFreeKey(d, entry) \
     if ((d)->type->keyDestructor) \
         (d)->type->keyDestructor((d)->privdata, (entry)->key)
+
 
 #define dictSetKey(d, entry, _key_) do { \
     if ((d)->type->keyDup) \

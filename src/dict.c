@@ -111,6 +111,7 @@ static void _dictReset(dictht *ht)
 dict *dictCreate(dictType *type,
         void *privDataPtr)
 {
+    //这种写法是合法的，并
     dict *d = zmalloc(sizeof(*d));
 
     _dictInit(d,type,privDataPtr);
@@ -197,9 +198,11 @@ int dictRehash(dict *d, int n) {
         assert(d->ht[0].size > (unsigned long)d->rehashidx);
         while(d->ht[0].table[d->rehashidx] == NULL) {
             d->rehashidx++;
+            //防止搜索太多也没找到，造成卡顿
             if (--empty_visits == 0) return 1;
         }
         de = d->ht[0].table[d->rehashidx];
+        //利用 rehashidx遍历整个hashtable进行再hash
         /* Move all the keys in this bucket from the old to the new hash HT */
         while(de) {
             uint64_t h;
@@ -289,6 +292,7 @@ int dictAdd(dict *d, void *key, void *val)
  *
  * If key was added, the hash entry is returned to be manipulated by the caller.
  */
+//返回dictEntry， 并不会直接设置Key Value的值
 dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
 {
     long index;
@@ -299,6 +303,7 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
 
     /* Get the index of the new element, or -1 if
      * the element already exists. */
+    //这里会决定是否扩容
     if ((index = _dictKeyIndex(d, key, dictHashKey(d,key), existing)) == -1)
         return NULL;
 
@@ -306,8 +311,10 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
      * Insert the element in top, with the assumption that in a database
      * system it is more likely that recently added entries are accessed
      * more frequently. */
+    //根据是否rehash选择设置Key到哪张table里
     ht = dictIsRehashing(d) ? &d->ht[1] : &d->ht[0];
     entry = zmalloc(sizeof(*entry));
+    //开链法解决冲突的问题
     entry->next = ht->table[index];
     ht->table[index] = entry;
     ht->used++;
@@ -976,6 +983,8 @@ static unsigned long _dictNextPower(unsigned long size)
 {
     unsigned long i = DICT_HT_INITIAL_SIZE;
 
+    //LONG_MAX is 9223372036854775807 refer https://www.tutorialspoint.com/c_standard_library/limits_h.htm
+    //一般则是double扩容 初始值为4
     if (size >= LONG_MAX) return LONG_MAX + 1LU;
     while(1) {
         if (i >= size)
@@ -998,6 +1007,7 @@ static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **e
     if (existing) *existing = NULL;
 
     /* Expand the hash table if needed */
+    // 判断redis是否需要扩容 1:1的空洞率时就要进行扩容
     if (_dictExpandIfNeeded(d) == DICT_ERR)
         return -1;
     for (table = 0; table <= 1; table++) {

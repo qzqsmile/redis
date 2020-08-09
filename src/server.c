@@ -1726,6 +1726,7 @@ void databasesCron(void) {
         /* Rehash */
         if (server.activerehashing) {
             for (j = 0; j < dbs_per_call; j++) {
+                //每次rehash 1ms
                 int work_done = incrementallyRehash(rehash_db);
                 if (work_done) {
                     /* If the function did some work, stop here, we'll do
